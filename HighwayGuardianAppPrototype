@@ -1,0 +1,146 @@
+// App.js - Main application component
+
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { StatusBar } from 'react-native';
+import auth from '@react-native-firebase/auth';
+import messaging from '@react-native-firebase/messaging';
+
+// Screens
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import HomeScreen from './screens/HomeScreen';
+import AccidentAlertScreen from './screens/AccidentAlertScreen';
+import EmergencyContactsScreen from './screens/EmergencyContactsScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import SettingsScreen from './screens/SettingsScreen';
+
+// Components
+import LoadingScreen from './components/LoadingScreen';
+
+const Stack = createStackNavigator();
+
+export default function App() {
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(null);
+  
+  // Handle user state changes
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+  
+  useEffect(() => {
+    // Set up Firebase auth listener
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    
+    // Request notification permissions
+    requestNotificationPermissions();
+    
+    // Set up notification listeners
+    const unsubscribe = setUpNotificationListeners();
+    
+    return () => {
+      subscriber();
+      unsubscribe();
+    };
+  }, []);
+  
+  const requestNotificationPermissions = async () => {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    
+    if (enabled) {
+      console.log('Notification permissions granted');
+      
+      // Get device token for push notifications
+      const token = await messaging().getToken();
+      // Send token to backend
+      saveTokenToDatabase(token);
+      
+      // Listen to token refreshes
+      messaging().onTokenRefresh(token => {
+        saveTokenToDatabase(token);
+      });
+    }
+  };
+  
+  const saveTokenToDatabase = (token) => {
+    // Implementation to send token to your backend
+    console.log('Device token for notifications:', token);
+  };
+  
+  const setUpNotificationListeners = () => {
+    // Handle background/quit state messages
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+      console.log('Message handled in the background:', remoteMessage);
+    });
+    
+    // Handle foreground messages
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('Foreground message received:', remoteMessage);
+      
+      // If it's an accident alert, navigate to accident screen
+      if (remoteMessage.data?.type === 'ACCIDENT_ALERT') {
+        // Navigate to accident alert screen with data
+        // This requires navigation ref setup which is not shown here
+      }
+    });
+    
+    return unsubscribe;
+  };
+  
+  if (initializing) return <LoadingScreen />;
+  
+  return (
+    <NavigationContainer>
+      <StatusBar backgroundColor="#FF3B30" barStyle="light-content" />
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#FF3B30',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        {user ? (
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen 
+              name="AccidentAlert" 
+              component={AccidentAlertScreen}
+              options={{
+                title: 'EMERGENCY ALERT',
+                headerStyle: {
+                  backgroundColor: '#FF3B30',
+                },
+              }}
+            />
+            <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Register" 
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
