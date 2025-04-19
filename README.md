@@ -5,20 +5,37 @@ A system that will continuously monitor for the accident through the CCTV instal
 Tech Stack Used
 
 Frontend
+
 Next JS v.14
+
 Tailwind CSS
+
 TypeScript
+
 Axios
+
 React Query
+
 React Hook Form
+
 Leaflet
+
 Recharts
+
 Backend
+
 Flask
+
 Python
+
 MongoDB
+
 Nodemailer
+
 Cloudinary
+
 ML Model
+
 YOLOv8
+
 Roboflow
